@@ -3,7 +3,13 @@ import pandas as pd
 import sqlite3
 
 # Database connection
-conn = sqlite3.connect("cross_market.db")
+import os
+import sqlite3
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(BASE_DIR, "cross_market.db")
+
+conn = sqlite3.connect(db_path, check_same_thread=False)
 
 st.set_page_config(page_title="Cross Market Analysis", layout="wide")
 
@@ -16,8 +22,13 @@ page = st.sidebar.selectbox(
 if page == "Market Overview":
     st.title("📊 Cross-Market Overview")
 
-    start_date = st.date_input("Start Date", pd.to_datetime("2025-01-01"))
-    end_date = st.date_input("End Date", pd.to_datetime("2025-12-31"))
+    start_date = st.date_input(
+    "Start Date", pd.to_datetime("2025-01-01")
+).strftime("%Y-%m-%d")
+
+end_date = st.date_input(
+    "End Date", pd.to_datetime("2025-12-31")
+).strftime("%Y-%m-%d")
 
     query = f"""
     SELECT c.date,
@@ -32,7 +43,16 @@ if page == "Market Overview":
     AND c.date BETWEEN '{start_date}' AND '{end_date}'
     """
 
+   try:
     df = pd.read_sql(query, conn)
+except Exception as e:
+    st.error(f"Database error: {e}")
+    st.stop()
+
+if df.empty:
+    st.warning("No data found for selected date range.")
+    st.stop()
+
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Bitcoin Avg Price", round(df['bitcoin_price'].mean(),2))
@@ -79,3 +99,4 @@ elif page == "Top Crypto Analysis":
 
     st.line_chart(df.set_index("date"))
     st.dataframe(df)
+
